@@ -1,26 +1,19 @@
 import logging
 import azure.functions as func
-
-from tensorflow.keras import datasets, Sequential
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.layers import Flatten, Dense, Dropout
+from io import BytesIO
 from tensorflow.keras.models import load_model
-from tensorflow.nn import relu, softmax
-from matplotlib import pyplot as plt
-import tensorflowjs as tfjs
-import tensorflow as tf
-from tensorflow.python.framework import convert_to_constants
-import numpy as np
-import pandas as pd
-from sklearn.model_selection import train_test_split
+from azure.storage.blob import BlobClient
+from h5py import File as h5py_File
+from json import dumps as json_dumps
+from numpy import array as numpy_array, argmax as numpy_argmax
+from os import environ as env_var
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
-    logging.info(req.params)
 
     req_body = req.get_json()
-    print(req_body)
+    logging.info(req_body)
 
     # Get data from request
     age = float(req_body.get('Age'))
@@ -31,30 +24,34 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     oxigen_saturation = float(req_body.get('OxygenSaturation'))
     temperature = float(req_body.get('Temperature'))
 
-    print(age, presenting_problem, positive_discriminator,
-          respiratory_rate, heart_rate, oxigen_saturation, temperature)
-
     # Load the model
-    model = load_model('Model\model.h5')
+    sas_url = env_var['MODEL_SAS_URL']
+    blob_service_client = BlobClient.from_blob_url(sas_url)
+
+    model_file = h5py_File(
+        BytesIO(blob_service_client.download_blob().content_as_bytes(max_concurrency=1)), 'r')
+    model = load_model(model_file)
 
     # Predict
-    parameters = np.array([[age, respiratory_rate, heart_rate, temperature,
-                          oxigen_saturation, positive_discriminator, presenting_problem]])
+    parameters = numpy_array([[age, respiratory_rate, heart_rate, temperature,
+                               oxigen_saturation, positive_discriminator, presenting_problem]])
     result = model.predict(parameters)
 
-    print(result)
-
     # Get result name
-    if np.argmax(result) == 0:
+    if numpy_argmax(result) == 0:
         result_name = 'NonUrgent'
-    elif np.argmax(result) == 1:
+    elif numpy_argmax(result) == 1:
         result_name = 'Standard'
-    elif np.argmax(result) == 2:
+    elif numpy_argmax(result) == 2:
         result_name = 'Urgent'
-    elif np.argmax(result) == 3:
+    elif numpy_argmax(result) == 3:
         result_name = 'VeryUrgent'
-    elif np.argmax(result) == 4:
+    elif numpy_argmax(result) == 4:
         result_name = 'Emergent'
 
     # Return result
-    return func.HttpResponse(result_name)
+    headers = {
+        "Content-type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+    }
+    return func.HttpResponse(json_dumps({"result": result_name}), status_code=200, headers=headers)
