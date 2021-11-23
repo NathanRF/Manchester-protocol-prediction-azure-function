@@ -16,13 +16,13 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info(req_body)
 
     # Get data from request
-    age = float(req_body.get('Age'))
-    presenting_problem = float(req_body.get('PresentingProblem'))
-    positive_discriminator = float(req_body.get('PositiveDiscriminator'))
-    respiratory_rate = float(req_body.get('RespiratoryRate'))
-    heart_rate = float(req_body.get('HeartRate'))
-    oxigen_saturation = float(req_body.get('OxygenSaturation'))
-    temperature = float(req_body.get('Temperature'))
+    age = float(req_body.get('age'))
+    presenting_problem = float(req_body.get('presentingProblem'))
+    positive_discriminator = float(req_body.get('positiveDiscriminator'))
+    respiratory_rate = float(req_body.get('respiratoryRate'))
+    heart_rate = float(req_body.get('heartRate'))
+    oxigen_saturation = float(req_body.get('oxygenSaturation'))
+    temperature = float(req_body.get('temperature'))
 
     # Load the model
     sas_url = env_var['MODEL_SAS_URL']
